@@ -1,0 +1,29 @@
+# Lokalne ustawienia i konfiguracja konkretnego środowiska
+local.properties
+supabase.properties
+supabase-dev.properties
+keystore.properties
+app/**/google-services.json
+*.jks
+*.keystore
+
+# Pliki generowane przez Android Studio i Gradle
+.gradle/
+.idea/
+.kotlin/
+build/
+app/build/
+*.apk
+
+# Lokalne dane testowe oraz artefakty robocze tego projektu
+.emulator-data/
+tmp/
+CODEX_HANDOFF.md
+/supabase/v21-import-settleup-misie.sql
+/supabase/import-settleup-history.sql
+/*.xml
+/*.png
+/androidMain/
+/commonMain/
+/settingsMain/
+/META-INF/

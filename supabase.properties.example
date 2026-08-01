@@ -1,0 +1,3 @@
+# Prywatna wersja aplikacji.
+SUPABASE_URL=https://twoj-projekt.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_wstaw_tutaj_klucz

@@ -1,0 +1,4 @@
+# Myszy DEV/demo: tylko dane nowego projektu Supabase myszy-dev.
+# Skopiuj jako supabase-dev.properties. Plik jest ignorowany przez Git.
+SUPABASE_URL=https://twoj-projekt-dev.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_wstaw_tutaj_klucz_dev

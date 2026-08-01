@@ -1,0 +1,4 @@
+# Przykład wyłącznie dla osobnego środowiska DEV/demo.
+# Nigdy nie wpisuj tu adresu ani klucza prywatnej bazy używanej na telefonach.
+SUPABASE_URL=https://twoj-projekt-dev.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_wstaw_tutaj_klucz
