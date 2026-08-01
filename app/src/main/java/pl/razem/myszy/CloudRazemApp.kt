@@ -251,7 +251,7 @@ fun CloudRazemApp(
                                 loading = false
                             }
                             .onFailure {
-                                error = "Nie udało się wysłać wiadomości. Sprawdź połączenie i spróbuj ponownie."
+                                error = passwordResetErrorMessage(it)
                                 loading = false
                             }
                     }

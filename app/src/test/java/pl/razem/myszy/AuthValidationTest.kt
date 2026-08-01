@@ -25,4 +25,11 @@ class AuthValidationTest {
         assertNull(validateNewPassword("nowehaslo123", "nowehaslo123"))
         assertEquals("Hasła nie są takie same.", validateNewPassword("nowehaslo123", "innehaslo123"))
     }
+
+    @Test fun passwordReset_explainsEmailRateLimit() {
+        assertEquals(
+            "Wysłaliśmy już kilka wiadomości. Odczekaj chwilę i spróbuj ponownie.",
+            passwordResetErrorMessage(IllegalStateException("over_email_send_rate_limit"))
+        )
+    }
 }

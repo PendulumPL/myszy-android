@@ -40,6 +40,8 @@ val supabase = createSupabaseClient(
     install(Functions)
 }
 
+private val authRedirectUrl = "${BuildConfig.AUTH_SCHEME}://auth-callback"
+
 @Serializable data class MemberRow(
     @SerialName("household_id") val householdId: String,
     @SerialName("user_id") val userId: String,
@@ -112,7 +114,7 @@ class SupabaseRepository(private val context: Context) {
     }
 
     suspend fun signUp(email: String, password: String): Boolean {
-        supabase.auth.signUpWith(Email) {
+        supabase.auth.signUpWith(Email, redirectUrl = authRedirectUrl) {
             this.email = email
             this.password = password
         }
@@ -120,7 +122,7 @@ class SupabaseRepository(private val context: Context) {
     }
 
     suspend fun requestPasswordReset(email: String) {
-        supabase.auth.resetPasswordForEmail(email)
+        supabase.auth.resetPasswordForEmail(email, redirectUrl = authRedirectUrl)
     }
 
     suspend fun updatePassword(password: String) {

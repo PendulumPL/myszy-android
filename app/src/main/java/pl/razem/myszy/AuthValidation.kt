@@ -15,3 +15,10 @@ internal fun validateNewPassword(password: String, repeatedPassword: String): St
     password != repeatedPassword -> "Hasła nie są takie same."
     else -> null
 }
+
+internal fun passwordResetErrorMessage(error: Throwable): String =
+    if (error.message?.contains("over_email_send_rate_limit") == true) {
+        "Wysłaliśmy już kilka wiadomości. Odczekaj chwilę i spróbuj ponownie."
+    } else {
+        "Nie udało się wysłać wiadomości. Sprawdź połączenie i spróbuj ponownie."
+    }

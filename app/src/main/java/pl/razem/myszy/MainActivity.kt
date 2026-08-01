@@ -135,6 +135,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         requestedExpenseId = intent.getStringExtra(ExpenseNotifications.EXTRA_EXPENSE_ID)
         acceptPendingRequest = intent.getBooleanExtra(AliorDecisionNotifier.EXTRA_ACCEPT, false)
         handleAuthIntent(intent)
