@@ -44,6 +44,7 @@ fun CloudRazemApp(
     authRefreshToken: Int = 0,
     passwordRecovery: Boolean = false,
     consumedPasswordRecovery: () -> Unit = {},
+    onPasswordResetRequested: () -> Unit = {},
     externalAuthError: String? = null,
     consumedExternalAuthError: () -> Unit = {}
 ) {
@@ -247,6 +248,7 @@ fun CloudRazemApp(
                         authNotice = null
                         runCatching { repo.requestPasswordReset(email) }
                             .onSuccess {
+                                onPasswordResetRequested()
                                 authNotice = "Jeśli konto istnieje, wysłaliśmy wiadomość do ustawienia nowego hasła."
                                 loading = false
                             }
