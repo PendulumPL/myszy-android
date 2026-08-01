@@ -24,7 +24,7 @@
 
 - [x] dodac w aplikacji rejestracje e-mail oraz zadanie resetu hasla;
 - [x] dodac obsluge powrotu z linku potwierdzajacego i odzyskiwania hasla;
-- [ ] dodac `myszy-dev://auth-callback` do dozwolonych przekierowan Supabase DEV;
+- [x] dodac `myszy-dev://auth-callback` do dozwolonych przekierowan Supabase DEV;
 - [ ] przetestowac zalozenie konta, potwierdzenie e-maila i zmiane hasla w DEV;
 - [x] przygotowac dwa fikcyjne konta i fikcyjny wydatek dla DEV;
 - [x] przygotowac i przetestowac fikcyjny paragon;
