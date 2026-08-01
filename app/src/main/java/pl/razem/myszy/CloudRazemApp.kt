@@ -232,7 +232,7 @@ fun CloudRazemApp(
                                     signedIn = true
                                     showWelcome = true
                                 } else {
-                                    authNotice = "Konto utworzone. Otwórz wiadomość wysłaną na e-mail i potwierdź rejestrację."
+                                    authNotice = "Konto utworzone. Sprawdź skrzynkę i potwierdź e-mail, aby dołączyć do norki."
                                 }
                             }
                             .onFailure {
@@ -249,7 +249,7 @@ fun CloudRazemApp(
                         runCatching { repo.requestPasswordReset(email) }
                             .onSuccess {
                                 onPasswordResetRequested()
-                                authNotice = "Jeśli konto istnieje, wysłaliśmy wiadomość do ustawienia nowego hasła."
+                                authNotice = "Sprawdź skrzynkę. Jeśli konto istnieje, wysłaliśmy bezpieczny link do ustawienia nowego hasła. Otwórz go na tym urządzeniu — norka czeka."
                                 loading = false
                             }
                             .onFailure {
