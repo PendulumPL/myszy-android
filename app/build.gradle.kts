@@ -49,20 +49,25 @@ android {
         versionCode = 39
         versionName = "0.9.7-balance-fix"
         manifestPlaceholders["appLabel"] = "Myszy"
+        manifestPlaceholders["authScheme"] = "myszy"
         buildConfigField("boolean", "IS_DEV", "false")
+        buildConfigField("String", "AUTH_SCHEME", "\"myszy\"")
     }
     flavorDimensions += "environment"
     productFlavors {
         create("private") {
             dimension = "environment"
             manifestPlaceholders["appLabel"] = "Myszy"
+            manifestPlaceholders["authScheme"] = "myszy"
         }
         create("dev") {
             dimension = "environment"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
             manifestPlaceholders["appLabel"] = "Myszy DEV"
+            manifestPlaceholders["authScheme"] = "myszy-dev"
             buildConfigField("boolean", "IS_DEV", "true")
+            buildConfigField("String", "AUTH_SCHEME", "\"myszy-dev\"")
             buildConfigField(
                 "String",
                 "SUPABASE_URL",

@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.delay
+import io.github.jan.supabase.auth.handleDeeplinks
 import org.json.JSONObject
 import java.io.File
 import java.time.LocalDate
@@ -104,20 +105,61 @@ class Store(context: Context) {
 class MainActivity : ComponentActivity() {
     private var requestedExpenseId by mutableStateOf<String?>(null)
     private var acceptPendingRequest by mutableStateOf(false)
+    private var authRefreshToken by mutableIntStateOf(0)
+    private var passwordRecovery by mutableStateOf(false)
+    private var authLinkError by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedExpenseId = intent.getStringExtra(ExpenseNotifications.EXTRA_EXPENSE_ID)
         acceptPendingRequest = intent.getBooleanExtra(AliorDecisionNotifier.EXTRA_ACCEPT, false)
+        handleAuthIntent(intent)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = BearBlue, secondary = MousePink, tertiary = MoneyGreen, surface = WarmSurface)) {
-                Surface(Modifier.fillMaxSize()) { CloudRazemApp(openExpenseId=requestedExpenseId, consumedOpenExpense={ requestedExpenseId = null }, acceptPending=acceptPendingRequest, consumedAcceptPending={ acceptPendingRequest = false }) }
+                Surface(Modifier.fillMaxSize()) {
+                    CloudRazemApp(
+                        openExpenseId = requestedExpenseId,
+                        consumedOpenExpense = { requestedExpenseId = null },
+                        acceptPending = acceptPendingRequest,
+                        consumedAcceptPending = { acceptPendingRequest = false },
+                        authRefreshToken = authRefreshToken,
+                        passwordRecovery = passwordRecovery,
+                        consumedPasswordRecovery = { passwordRecovery = false },
+                        externalAuthError = authLinkError,
+                        consumedExternalAuthError = { authLinkError = null }
+                    )
+                }
             }
         }
     }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         requestedExpenseId = intent.getStringExtra(ExpenseNotifications.EXTRA_EXPENSE_ID)
         acceptPendingRequest = intent.getBooleanExtra(AliorDecisionNotifier.EXTRA_ACCEPT, false)
+        handleAuthIntent(intent)
+    }
+
+    private fun handleAuthIntent(intent: Intent) {
+        val uri = intent.data ?: return
+        val isRecovery = uri.getQueryParameter("type") == "recovery" ||
+            uri.fragment?.split('&')?.any { it == "type=recovery" } == true
+        supabase.handleDeeplinks(
+            intent,
+            onSessionSuccess = {
+                runOnUiThread {
+                    passwordRecovery = isRecovery
+                    authLinkError = null
+                    authRefreshToken++
+                }
+            },
+            onError = {
+                runOnUiThread {
+                    authLinkError = "Link wygasł albo został już użyty. Poproś o nową wiadomość."
+                    authRefreshToken++
+                }
+            }
+        )
     }
 }
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

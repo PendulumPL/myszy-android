@@ -34,14 +34,28 @@ Nie dodawaj `google-services.json` ani konta uslugi do Git.
 3. Zachowaj prywatne wartosci poza repozytorium. Wersja prywatna nadal uzywa
    osobnego pliku `supabase.properties`.
 
-## 4. Dane demonstracyjne
+## 4. Rejestracja i linki e-mail
+
+1. W Supabase DEV wejdz w `Authentication` -> `URL Configuration`.
+2. Dodaj do dozwolonych adresow przekierowania:
+   `myszy-dev://auth-callback`.
+3. W `Authentication` -> `Providers` pozostaw wlaczony provider Email i
+   wymagaj potwierdzenia adresu przed pierwszym logowaniem.
+4. Nie dodawaj adresu wariantu prywatnego do projektu DEV. Wariant Private
+   uzywa osobnego przekierowania `myszy://auth-callback` i musi byc
+   skonfigurowany w swoim projekcie Supabase.
+
+Po kliknieciu linku potwierdzajacego aplikacja DEV otworzy sie automatycznie.
+Link odzyskiwania hasla otworzy bezpieczny ekran ustawienia nowego hasla.
+
+## 5. Dane demonstracyjne
 
 - utworz dwa nowe konta testowe;
 - utworz jeden Dom z fikcyjna nazwa;
 - dodaj kilka bezpiecznych, fikcyjnych wydatkow i sztuczny paragon;
 - nie importuj historii banku ani prawdziwych powiadomien o platnosci.
 
-## 5. Kontrola przed publicznym uzyciem
+## 6. Kontrola przed publicznym uzyciem
 
 - sprawdz RLS wszystkich tabel `razem_*`;
 - wdroz funkcje `send-expense-push` z

@@ -31,7 +31,10 @@ val supabase = createSupabaseClient(
     BuildConfig.SUPABASE_URL,
     BuildConfig.SUPABASE_PUBLISHABLE_KEY
 ) {
-    install(Auth)
+    install(Auth) {
+        scheme = BuildConfig.AUTH_SCHEME
+        host = "auth-callback"
+    }
     install(Postgrest)
     install(Storage)
     install(Functions)
@@ -106,6 +109,22 @@ class SupabaseRepository(private val context: Context) {
 
     suspend fun signIn(email: String, password: String) {
         supabase.auth.signInWith(Email) { this.email = email; this.password = password }
+    }
+
+    suspend fun signUp(email: String, password: String): Boolean {
+        supabase.auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+        }
+        return currentUser() != null
+    }
+
+    suspend fun requestPasswordReset(email: String) {
+        supabase.auth.resetPasswordForEmail(email)
+    }
+
+    suspend fun updatePassword(password: String) {
+        supabase.auth.updateUser { this.password = password }
     }
 
     suspend fun signOut() {

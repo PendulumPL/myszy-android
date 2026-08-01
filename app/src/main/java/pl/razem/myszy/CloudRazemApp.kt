@@ -36,7 +36,17 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
-fun CloudRazemApp(openExpenseId: String? = null, consumedOpenExpense: () -> Unit = {}, acceptPending: Boolean = false, consumedAcceptPending: () -> Unit = {}) {
+fun CloudRazemApp(
+    openExpenseId: String? = null,
+    consumedOpenExpense: () -> Unit = {},
+    acceptPending: Boolean = false,
+    consumedAcceptPending: () -> Unit = {},
+    authRefreshToken: Int = 0,
+    passwordRecovery: Boolean = false,
+    consumedPasswordRecovery: () -> Unit = {},
+    externalAuthError: String? = null,
+    consumedExternalAuthError: () -> Unit = {}
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val repo = remember { SupabaseRepository(context) }
     val localStore = remember { Store(context) }
@@ -57,6 +67,7 @@ fun CloudRazemApp(openExpenseId: String? = null, consumedOpenExpense: () -> Unit
     var safeMode by remember { mutableStateOf(localStore.safeMode()) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var authNotice by remember { mutableStateOf<String?>(null) }
     var inviteCode by remember { mutableStateOf<String?>(null) }
     var importQueue by remember { mutableStateOf(bankStore.load()) }
     var reviewingImport by remember { mutableStateOf(false) }
@@ -147,12 +158,18 @@ fun CloudRazemApp(openExpenseId: String? = null, consumedOpenExpense: () -> Unit
         }
     }
 
-    LaunchedEffect(authAttempt) {
+    LaunchedEffect(authAttempt, authRefreshToken) {
         authReady = false
         val status = withTimeoutOrNull(8_000) { supabase.auth.sessionStatus.first { it !is SessionStatus.Initializing } }
         signedIn = status is SessionStatus.Authenticated
         if (status == null) error = "Sprawdzanie zapisanej sesji trwa zbyt długo. Spróbuj ponownie."
         authReady = true
+    }
+    LaunchedEffect(externalAuthError) {
+        if (externalAuthError != null) {
+            error = externalAuthError
+            consumedExternalAuthError()
+        }
     }
     LaunchedEffect(signedIn, authReady) { if (signedIn && authReady) runCatching { refresh() }.onFailure { error = it.message; loading = false } }
     LaunchedEffect(signedIn, authReady) {
@@ -175,7 +192,101 @@ fun CloudRazemApp(openExpenseId: String? = null, consumedOpenExpense: () -> Unit
     Box(Modifier.fillMaxSize()) {
         when {
             !authReady -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            !signedIn -> CloudLogin(loading, error, retrySession = { authAttempt++ }) { email, password -> scope.launch { loading = true; error = null; runCatching { repo.signIn(email, password) }.onSuccess { loading = false; showWelcome = true; signedIn = true }.onFailure { error = "Nie udało się zalogować. Sprawdź e-mail, hasło i połączenie z internetem."; loading = false } } }
+            !signedIn -> CloudLogin(
+                loading = loading,
+                error = error,
+                notice = authNotice,
+                retrySession = { authAttempt++ },
+                clearFeedback = { error = null; authNotice = null },
+                signIn = { email, password ->
+                    scope.launch {
+                        loading = true
+                        error = null
+                        authNotice = null
+                        runCatching { repo.signIn(email, password) }
+                            .onSuccess {
+                                loading = false
+                                showWelcome = true
+                                signedIn = true
+                            }
+                            .onFailure {
+                                error = "Nie udało się zalogować. Sprawdź e-mail, hasło i połączenie z internetem."
+                                loading = false
+                            }
+                    }
+                },
+                signUp = { email, password, repeatedPassword ->
+                    validateRegistration(email, password, repeatedPassword)?.let {
+                        error = it
+                        return@CloudLogin
+                    }
+                    scope.launch {
+                        loading = true
+                        error = null
+                        authNotice = null
+                        runCatching { repo.signUp(email, password) }
+                            .onSuccess { signedInImmediately ->
+                                loading = false
+                                if (signedInImmediately) {
+                                    signedIn = true
+                                    showWelcome = true
+                                } else {
+                                    authNotice = "Konto utworzone. Otwórz wiadomość wysłaną na e-mail i potwierdź rejestrację."
+                                }
+                            }
+                            .onFailure {
+                                error = "Nie udało się utworzyć konta. Sprawdź dane lub spróbuj ponownie później."
+                                loading = false
+                            }
+                    }
+                },
+                resetPassword = { email ->
+                    scope.launch {
+                        loading = true
+                        error = null
+                        authNotice = null
+                        runCatching { repo.requestPasswordReset(email) }
+                            .onSuccess {
+                                authNotice = "Jeśli konto istnieje, wysłaliśmy wiadomość do ustawienia nowego hasła."
+                                loading = false
+                            }
+                            .onFailure {
+                                error = "Nie udało się wysłać wiadomości. Sprawdź połączenie i spróbuj ponownie."
+                                loading = false
+                            }
+                    }
+                }
+            )
+            passwordRecovery -> PasswordRecoveryScreen(
+                loading = loading,
+                error = error,
+                save = { password, repeatedPassword ->
+                    validateNewPassword(password, repeatedPassword)?.let {
+                        error = it
+                        return@PasswordRecoveryScreen
+                    }
+                    scope.launch {
+                        loading = true
+                        error = null
+                        runCatching { repo.updatePassword(password) }
+                            .onSuccess {
+                                loading = false
+                                authNotice = "Hasło zostało zmienione."
+                                consumedPasswordRecovery()
+                            }
+                            .onFailure {
+                                error = "Nie udało się zmienić hasła. Poproś o nowy link."
+                                loading = false
+                            }
+                    }
+                },
+                cancel = {
+                    scope.launch {
+                        logout()
+                        consumedPasswordRecovery()
+                    }
+                }
+            )
             showWelcome -> WelcomeMyszy { showWelcome = false }
             loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             inviteCode != null -> InviteCodeScreen(inviteCode!!) { scope.launch { inviteCode = null; refresh() } }
@@ -327,17 +438,33 @@ private fun WelcomeMyszy(done: () -> Unit) {
         }
     }
 }
+private enum class AuthMode { SIGN_IN, SIGN_UP, RESET_PASSWORD }
+
 @Composable
 private fun CloudLogin(
     loading: Boolean,
     error: String?,
+    notice: String?,
     retrySession: () -> Unit,
-    submit: (String, String) -> Unit
+    clearFeedback: () -> Unit,
+    signIn: (String, String) -> Unit,
+    signUp: (String, String, String) -> Unit,
+    resetPassword: (String) -> Unit
 ) {
+    var mode by remember { mutableStateOf(AuthMode.SIGN_IN) }
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var repeatedPassword by remember { mutableStateOf("") }
     var showPrivacy by remember { mutableStateOf(false) }
     val scroll = androidx.compose.foundation.rememberScrollState()
+
+    fun changeMode(newMode: AuthMode) {
+        mode = newMode
+        password = ""
+        repeatedPassword = ""
+        clearFeedback()
+    }
+
     Column(
         Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF), Color(0xFFF8F2FF))))
             .verticalScroll(scroll).imePadding().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 30.dp),
@@ -358,12 +485,63 @@ private fun CloudLogin(
         TextButton({ showPrivacy = true }, colors = ButtonDefaults.textButtonColors(contentColor = AniaPurple)) { Text("Spokojnie Myszo \uD83D\uDC2D") }
         Spacer(Modifier.height(8.dp))
         Surface(Modifier.fillMaxWidth(), color = Color.White.copy(alpha = .92f), shape = RoundedCornerShape(24.dp), tonalElevation = 3.dp) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    when (mode) {
+                        AuthMode.SIGN_IN -> "Zaloguj się"
+                        AuthMode.SIGN_UP -> "Załóż konto"
+                        AuthMode.RESET_PASSWORD -> "Odzyskaj hasło"
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                if (mode == AuthMode.SIGN_UP) {
+                    Text("Najpierw tworzysz własne konto. Dom połączysz z drugą osobą w następnym kroku.", color = Color.Gray)
+                }
+                if (mode == AuthMode.RESET_PASSWORD) {
+                    Text("Wyślemy bezpieczny link do ustawienia nowego hasła.", color = Color.Gray)
+                }
                 OutlinedTextField(login, { login = it }, label = { Text("E-mail") }, placeholder = { Text("twoj@email.pl") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
-                OutlinedTextField(password, { password = it }, label = { Text("Has\u0142o") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                if (mode != AuthMode.RESET_PASSWORD) {
+                    OutlinedTextField(password, { password = it }, label = { Text("Hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                }
+                if (mode == AuthMode.SIGN_UP) {
+                    OutlinedTextField(repeatedPassword, { repeatedPassword = it }, label = { Text("Powtórz hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                    Text("Minimum 8 znaków.", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button({ submit(login.trim(), password) }, enabled = !loading && login.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.buttonColors(containerColor = BearBlue)) { Text(if (loading) "Logowanie..." else "Zaloguj si\u0119", fontWeight = FontWeight.Bold) }
+                notice?.let { Text(it, color = MoneyGreen, fontWeight = FontWeight.SemiBold) }
+                Button(
+                    onClick = {
+                        when (mode) {
+                            AuthMode.SIGN_IN -> signIn(login.trim(), password)
+                            AuthMode.SIGN_UP -> signUp(login.trim(), password, repeatedPassword)
+                            AuthMode.RESET_PASSWORD -> resetPassword(login.trim())
+                        }
+                    },
+                    enabled = !loading && login.isNotBlank() && (mode == AuthMode.RESET_PASSWORD || password.isNotBlank()),
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BearBlue)
+                ) {
+                    Text(
+                        if (loading) "Chwileczkę..." else when (mode) {
+                            AuthMode.SIGN_IN -> "Zaloguj się"
+                            AuthMode.SIGN_UP -> "Załóż konto"
+                            AuthMode.RESET_PASSWORD -> "Wyślij link"
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 if (error?.contains("Spr\u00f3buj ponownie") == true) TextButton({ retrySession() }, enabled = !loading, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Spr\u00f3buj ponownie") }
+                when (mode) {
+                    AuthMode.SIGN_IN -> {
+                        TextButton({ changeMode(AuthMode.SIGN_UP) }, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Nie masz konta? Załóż je") }
+                        TextButton({ changeMode(AuthMode.RESET_PASSWORD) }, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Nie pamiętasz hasła?") }
+                    }
+                    AuthMode.SIGN_UP, AuthMode.RESET_PASSWORD ->
+                        TextButton({ changeMode(AuthMode.SIGN_IN) }, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Wróć do logowania") }
+                }
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -376,6 +554,43 @@ private fun CloudLogin(
         }
     }
     if (showPrivacy) PrivacyMyszy { showPrivacy = false }
+}
+
+@Composable
+private fun PasswordRecoveryScreen(
+    loading: Boolean,
+    error: String?,
+    save: (String, String) -> Unit,
+    cancel: () -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var repeatedPassword by remember { mutableStateOf("") }
+    Column(
+        Modifier.fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF))))
+            .imePadding()
+            .navigationBarsPadding()
+            .padding(22.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Surface(Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(24.dp), tonalElevation = 4.dp) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Ustaw nowe hasło", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("Link z wiadomości został potwierdzony. Nowe hasło musi mieć co najmniej 8 znaków.", color = Color.Gray)
+                OutlinedTextField(password, { password = it }, label = { Text("Nowe hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                OutlinedTextField(repeatedPassword, { repeatedPassword = it }, label = { Text("Powtórz nowe hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                Button(
+                    { save(password, repeatedPassword) },
+                    enabled = !loading && password.isNotBlank() && repeatedPassword.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) { Text(if (loading) "Zapisywanie..." else "Zapisz nowe hasło", fontWeight = FontWeight.Bold) }
+                TextButton(cancel, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Wróć do logowania") }
+            }
+        }
+    }
 }
 @Composable
 private fun LegacyPrivacyMyszy(close: () -> Unit) {
