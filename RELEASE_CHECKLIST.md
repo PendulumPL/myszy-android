@@ -12,6 +12,7 @@
 - [x] testy jednostkowe przechodza, a oba warianty Android kompiluje sie lokalnie;
 - [x] Android Lint dla wariantow Private i DEV przechodzi bez bledow;
 - [x] pakiet DEV release kompiluje sie lokalnie;
+- [x] prywatny APK release zostal zbudowany po ostatnim redesignie kart wydatkow i wyrownan;
 - [x] utworzono lokalny klucz uploadu i zbudowano podpisany pakiet DEV AAB;
 - [x] przygotowano robocze materiały do wpisu Google Play;
 - [x] przygotowano polityke prywatnosci i zbiorczy plan testow;
@@ -25,11 +26,12 @@
 - [x] dodac w aplikacji rejestracje e-mail oraz zadanie resetu hasla;
 - [x] dodac obsluge powrotu z linku potwierdzajacego i odzyskiwania hasla;
 - [x] dodac `myszy-dev://auth-callback` do dozwolonych przekierowan Supabase DEV;
-- [ ] przetestowac zalozenie konta, potwierdzenie e-maila i zmiane hasla w DEV;
+- [x] przetestowac zalozenie konta, potwierdzenie e-maila i zmiane hasla w DEV;
 - [x] przygotowac dwa fikcyjne konta i fikcyjny wydatek dla DEV;
 - [x] przygotowac i przetestowac fikcyjny paragon;
 - [x] sprawdzic w obie strony, ze powiadomienie DEV nie zawiera kwoty ani sklepu;
 - [ ] wpisac dane kontaktowe i opublikowac polityke prywatnosci pod stalym adresem;
+- [ ] skonfigurowac wlasny SMTP lub hook wysylki, aby nadac mailom Supabase styl Myszy;
 - [ ] utworzyc konto/konfiguracje Google Play Console, jesli jeszcze nie istnieje;
 - [ ] zachowac zaszyfrowana kopie plikow klucza uploadu poza katalogiem projektu;
 - [ ] podniesc wersje aplikacji dopiero przy faktycznym buildzie testerskim.
@@ -42,10 +44,10 @@
 - [x] sprawdzic zdjecie, podglad i usuniecie paragonu;
 - [x] potwierdzic, ze dolne przyciski nie nachodza na nawigacje systemowa;
 - [x] umiescic historie wydatkow przed historia splat;
-- [ ] sprawdzic wylogowanie i brak danych poprzedniego konta;
-- [ ] sprawdzic prywatnosc powiadomienia na zablokowanym ekranie;
-- [ ] sprawdzic import kontrolnego PDF/XLSX i wznowienie przerwanej kolejki;
-- [ ] sprawdzic opcjonalna propozycje platnosci, jesli pozostaje w zakresie wydania.
+- [x] sprawdzic wylogowanie i brak danych poprzedniego konta;
+- [ ] sprawdzic prywatnosc powiadomienia na zablokowanym ekranie (odlozone; ogolny komunikat push pozostaje wlaczony);
+- [x] sprawdzic import kontrolnego PDF/XLSX i wznowienie przerwanej kolejki;
+- [x] odczyt powiadomien bankowych jest wyszarzony i celowo odlozony do kolejnego update'u;
 
 ## Regresja DEV na emulatorach - 2026-08-01
 
@@ -63,6 +65,15 @@
 
 - [x] wykonac skan plikow przeznaczonych do pierwszego commita pod katem sekretow i danych prywatnych;
 - [ ] opublikowac wylacznie kod i konfiguracje DEV/demo;
-- [ ] zrobic screeny tylko na fikcyjnych danych;
-- [ ] dopisac README, opis architektury i case study;
+- [x] zrobic screeny tylko na fikcyjnych danych (12 screenow w `portfolio/screenshots-dev/`);
+- [ ] odswiezyc screeny norki, historii i wyrownan po zmianie avatarow osob oraz lawendowym stylu wyrownan;
+- [x] dopisac README, opis architektury i case study;
+- [x] przygotowac manifest plikow do bezpiecznego publicznego repozytorium;
 - [ ] dodac projekt do istniejacej strony portfolio na GitHubie.
+
+### Decyzja zakresu — kolejny update
+
+Automatyczne odczytywanie powiadomień bankowych nie należy do bieżącego
+wydania testerskiego. W aplikacji pozostaje widoczna wyłącznie jako nieaktywna
+funkcja beta; wróci po zakończeniu testów logowania, parowania, wydatków,
+importu, paragonów oraz spłat.

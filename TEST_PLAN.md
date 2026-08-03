@@ -10,6 +10,12 @@ Nie używaj realnych wrażliwych opisów ani zdjęć dokumentów podczas testu.
 - połączenie z internetem na obu telefonach;
 - jedno fikcyjne zdjęcie paragonu i mały testowy PDF lub XLSX.
 
+### Fikcyjny plik do importu
+
+Do testu importu uĹĽyj pliku `output/pdf/portfolio-demo-bank-statement.pdf`.
+To plik wyĹ‚Ä…cznie demonstracyjny: zawiera cztery sztuczne pĹ‚atnoĹ›ci i nie
+zawiera danych bankowych ani osobowych.
+
 ## 1. Logowanie i synchronizacja
 
 1. Zaloguj każde konto na innym telefonie.
@@ -52,13 +58,13 @@ importu znika po wylogowaniu.
 
 1. Zezwól na zwykłe powiadomienia Androida na obu telefonach.
 2. Dodaj wydatek na telefonie A.
-3. Sprawdź powiadomienie na telefonie B, także na ekranie blokady.
-4. Opcjonalnie, wyłącznie na telefonie Myszo, włącz dostęp do powiadomień i
-   sprawdź propozycję płatności z bezpiecznym testowym komunikatem.
+3. Sprawdź ogólne powiadomienie na telefonie B, także na ekranie blokady.
+4. Nie włączaj odczytu powiadomień bankowych — funkcja jest wyszarzona i
+   odłożona do kolejnego update'u.
 
-**Wynik oczekiwany:** na ekranie blokady nie ma kwoty, sklepu ani danych drugiej
-osoby. Funkcja automatycznej propozycji jest opcjonalna i działa dopiero po
-wyraźnym włączeniu.
+**Wynik oczekiwany:** powiadomienie nie pokazuje kwoty, sklepu ani danych
+drugiej osoby. Automatyczne odczytywanie płatności nie jest obecnie częścią
+wydania testerskiego.
 
 ## 6. Wylogowanie
 
@@ -77,3 +83,15 @@ Zapisz tylko:
 - wynik każdego z sześciu obszarów: zaliczone / problem;
 - krótki opis problemu bez prawdziwych danych finansowych;
 - zrzut ekranu wyłącznie z fikcyjnymi danymi, jeśli jest potrzebny.
+## Test fizyczny: profil i kolor
+
+Po instalacji prywatnego release na telefonie sprawdzić ręcznie:
+
+1. `Mój profil` → `Zmień motyw myszy`: wybrany motyw ma być widoczny po powrocie do norki.
+2. `Mój profil` → `Zmień kolor profilu`: kolor ma zmienić akcent profilu i przyciski także dla Pawła.
+3. Zamknąć i ponownie otworzyć aplikację: avatar i kolor muszą pozostać zapisane.
+
+**Wynik 2026-08-02:** kolor profilu na fizycznym telefonie zapisuje się poprawnie
+po zamknięciu i ponownym uruchomieniu aplikacji.
+
+**Wynik 2026-08-02:** avatar profilu również pozostaje zapisany po restarcie.

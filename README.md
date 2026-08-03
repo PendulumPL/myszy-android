@@ -21,9 +21,24 @@ do niej prywatnych kont, wydatków, importów ani paragonów.
 - jeden wspólny Dom dla maksymalnie dwóch osób;
 - wydatki, kategorie, komentarze, własne udziały i historia aktywności;
 - opcjonalne zdjęcia paragonów w prywatnym Storage;
-- import plików bankowych do ręcznego zatwierdzenia;
-- opcjonalne propozycje płatności z wybranych powiadomień;
+- ręczne dodawanie wydatków oraz import plików bankowych do zatwierdzenia;
 - techniczne powiadomienia push Firebase bez kwoty, sklepu i płatnika.
+
+### Odczyt powiadomień — planowany kolejny update
+
+Automatyczne odczytywanie powiadomień bankowych jest obecnie celowo wyłączone
+i widoczne w aplikacji jako wyszarzona funkcja beta. Najpierw stabilizujemy
+logowanie, parowanie Domu, wydatki, import i paragony. Odczyt powiadomień
+wróci dopiero w osobnym update, po dodatkowych testach prywatności.
+
+### Dalsza mapa rozwoju
+
+- **kolejny etap:** wersja angielska interfejsu i komunikatów;
+- **po ustabilizowaniu wersji językowych:** rozważenie delikatnych reklam lub
+  dobrowolnego modelu wsparcia, bez śledzenia wydatków i bez reklam w danych
+  rozliczeniowych;
+- **później:** wydanie na iOS po ustabilizowaniu Androida, testów i publikacji
+  wersji testerskiej.
 
 ## Prywatność i bezpieczeństwo
 
@@ -35,6 +50,11 @@ do niej prywatnych kont, wydatków, importów ani paragonów.
 - systemowy backup danych aplikacji jest wyłączony;
 - importy i zdjęcia paragonów mają limity wielkości;
 - powiadomienia na ekranie blokady nie ujawniają danych finansowych.
+
+Treści maili Auth (potwierdzenie konta i reset hasła) są obecnie wysyłane przez
+domyślną usługę Supabase. Ich myszowy wygląd ustawimy po skonfigurowaniu
+własnego SMTP lub hooka wysyłki — bez przechowywania haseł do prywatnej skrzynki
+w repozytorium.
 
 Szczegóły znajdują się w [PRIVACY_POLICY.md](PRIVACY_POLICY.md) oraz
 [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -69,6 +89,13 @@ APK DEV powstaje w:
 `app/build/outputs/apk/dev/debug/app-dev-debug.apk`.
 Podpisany pakiet AAB DEV powstaje w:
 `app/build/outputs/bundle/devRelease/app-dev-release.aab`.
+
+### OCR paragonow — planowany kolejny update
+
+W dalszym etapie chcemy dodac OCR paragonow: aplikacja odczyta ze zdjecia sklep,
+kwote i podstawowe pozycje, a uzytkownik zatwierdzi dane przed zapisem. Obecna
+wersja traktuje paragon jako zalacznik do recznie wpisanego wydatku i nie
+rozpoznaje automatycznie jego tresci.
 
 ## Dokumentacja robocza
 

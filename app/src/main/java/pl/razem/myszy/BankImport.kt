@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -116,15 +117,32 @@ object BankStatementParser {
         }.distinctBy { it.id }
     }}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BankImportReview(transaction: BankTransaction, position: Int, total: Int, yes: () -> Unit, no: () -> Unit, modify: () -> Unit, stop: () -> Unit) {
-    Scaffold { padding -> Box(Modifier.padding(padding).fillMaxSize(), contentAlignment=Alignment.Center) { ElevatedCard(Modifier.padding(20.dp).fillMaxWidth(), shape=RoundedCornerShape(24.dp)) { Column(Modifier.padding(22.dp), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        Text("Import wyciągu • $position z $total", color=BearBlue, fontWeight=FontWeight.Bold)
-        Text("Dodać do wspólnych wydatków?", style=MaterialTheme.typography.headlineSmall, fontWeight=FontWeight.Bold)
-        Text(transaction.description, style=MaterialTheme.typography.titleMedium)
-        Text(transaction.date, color=androidx.compose.ui.graphics.Color.Gray)
-        Text(money(transaction.amount), color=MoneyGreen, style=MaterialTheme.typography.displaySmall, fontWeight=FontWeight.ExtraBold)
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { OutlinedButton(no,Modifier.weight(1f)){Text("Nie")}; OutlinedButton(modify,Modifier.weight(1f)){Text("Modyfikuj")}; Button(yes,Modifier.weight(1f)){Text("Tak") } }
-        TextButton(stop,Modifier.fillMaxWidth()){Text("Przerwij — wrócę później")}
-    } } } }
+fun BankImportReview(transaction: BankTransaction, position: Int, total: Int, yes: () -> Unit, no: () -> Unit, modify: () -> Unit, stop: () -> Unit, discard: () -> Unit) {
+    val progress = if (total > 0) position.toFloat() / total.toFloat() else 0f
+    Scaffold(containerColor = MouseCream, topBar = { TopAppBar(colors = TopAppBarDefaults.topAppBarColors(containerColor = MouseCream, titleContentColor = MouseInk), title = { Text("Okruszki z banku", fontWeight = FontWeight.Bold) }, navigationIcon = { TextButton(stop) { Text("Wróć", color = MouseTerracotta) } }) }) { padding ->
+        Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text("Okruszek $position z $total", color = MouseTerracotta, fontWeight = FontWeight.Bold)
+                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth(), color = MouseTerracotta, trackColor = MouseTerracottaSoft)
+                Surface(color = MouseSurface, shape = RoundedCornerShape(24.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MouseLine), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Czy to wydatek do naszej norki?", color = MouseInk, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                        Text("Myszy pokażą Ci każdy znaleziony przelew osobno. Ty decydujesz, co zapisujemy.", color = MouseMuted, fontSize = 14.sp)
+                        Text(transaction.description, color = MouseInk, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(transaction.date, color = MouseMuted, fontSize = 13.sp)
+                        Text(money(transaction.amount), color = MouseTerracotta, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(no, Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("Pomiń") }
+                    OutlinedButton(modify, Modifier.weight(1f), shape = RoundedCornerShape(14.dp)) { Text("Dopasuj") }
+                    Button(yes, Modifier.weight(1f), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.buttonColors(containerColor = MouseTerracotta)) { Text("Dodaj") }
+                }
+                TextButton(stop, Modifier.fillMaxWidth()) { Text("Zatrzymaj import — wrócę później", color = MouseMuted) }
+                TextButton(discard, Modifier.fillMaxWidth()) { Text("Porzuć całkowicie ten import", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
+            }
+        }
+    }
 }

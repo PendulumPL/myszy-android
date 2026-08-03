@@ -45,7 +45,14 @@ private val authRedirectUrl = "${BuildConfig.AUTH_SCHEME}://auth-callback"
 @Serializable data class MemberRow(
     @SerialName("household_id") val householdId: String,
     @SerialName("user_id") val userId: String,
-    val nickname: String
+    val nickname: String,
+    @SerialName("avatar_id") val avatarId: Int = 0,
+    @SerialName("profile_color") val profileColor: Int = 0
+)
+
+@Serializable private data class MemberProfilePatch(
+    @SerialName("avatar_id") val avatarId: Int,
+    @SerialName("profile_color") val profileColor: Int
 )
 
 @Serializable data class HouseholdRow(
@@ -160,6 +167,12 @@ class SupabaseRepository(private val context: Context) {
         supabase.from("razem_members").select {
             filter { eq("household_id", householdId) }
         }.decodeList()
+
+    suspend fun updateMemberProfile(householdId: String, userId: String, avatarId: Int, profileColor: Int) {
+        supabase.from("razem_members").update(MemberProfilePatch(avatarId.coerceIn(0, 19), profileColor)) {
+            filter { eq("household_id", householdId); eq("user_id", userId) }
+        }
+    }
 
     suspend fun balanceCorrection(householdId: String): Double = runCatching {
         household(householdId)?.balanceCorrection ?: 0.0
@@ -344,6 +357,7 @@ class SupabaseRepository(private val context: Context) {
 
     private suspend fun uploadReceipt(householdId: String, value: String?): String? {
         if (value == null || value.startsWith("$householdId/")) return value
+        if (value == DEMO_RECEIPT_PATH) return value
         val uri = Uri.parse(value)
         val bytes = context.contentResolver.openInputStream(uri)?.use {
             it.readAtMost(MAX_RECEIPT_BYTES, "Zdjęcie paragonu jest zbyt duże. Maksymalny rozmiar to 10 MB.")

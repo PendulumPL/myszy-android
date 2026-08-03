@@ -73,6 +73,10 @@ object AliorDecisionNotifier {
 
 class AliorNotificationListener:NotificationListenerService(){
     override fun onNotificationPosted(sbn:StatusBarNotification){
+        // Deliberately disabled for the current release. Re-enable only in a
+        // future update after the manual expense flow and privacy review are
+        // complete.
+        if (!NOTIFICATION_READING_ENABLED) return
         val prefs=getSharedPreferences("razem",Context.MODE_PRIVATE)
         if(prefs.getBoolean("safe_mouse",true)) return
         val identity=prefs.getString("notification_identity","").orEmpty()
@@ -96,7 +100,7 @@ class AliorNotificationListener:NotificationListenerService(){
         if(parsed==null) return
         AliorDecisionNotifier.show(this,parsed)
     }
-    companion object{const val ALIOR_PACKAGE="pl.aliorbank.aib";const val GMAIL_PACKAGE="com.google.android.gm";const val GOOGLE_WALLET_PACKAGE="com.google.android.apps.walletnfcrel"}
+    companion object{const val NOTIFICATION_READING_ENABLED=false;const val ALIOR_PACKAGE="pl.aliorbank.aib";const val GMAIL_PACKAGE="com.google.android.gm";const val GOOGLE_WALLET_PACKAGE="com.google.android.apps.walletnfcrel"}
 }
 
 class PaymentActionReceiver:BroadcastReceiver(){

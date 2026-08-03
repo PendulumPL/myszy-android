@@ -23,6 +23,15 @@ Myszy pozwala jednej parze prowadzić wspólny Dom:
 - importować dane bankowe tylko do ręcznego zatwierdzenia;
 - otrzymywać techniczne powiadomienie o zmianie bez przesyłania kwoty lub sklepu.
 
+W najnowszym odświeżeniu interfejsu każdy wydatek pokazuje również avatar i nazwę
+myszy, która go wpisała. Wydatki bieżącego użytkownika i drugiej osoby mają
+odrębne, delikatne kolory, a wyrównania są oznaczone osobnym lawendowym stylem,
+żeby historia była czytelna już przy szybkim przewijaniu.
+
+Automatyczny odczyt powiadomień bankowych jest świadomie odłożony do kolejnego
+update'u. W bieżącej wersji beta aplikacja pozostawia tę funkcję wyszarzoną,
+aby najpierw domknąć stabilność i prywatność podstawowego przepływu.
+
 ## Najważniejsze decyzje techniczne
 
 - Kotlin i Jetpack Compose dla aplikacji Android;
@@ -60,8 +69,29 @@ W projekcie ograniczono dane na każdym etapie:
 - link do polityki prywatności;
 - link do strony portfolio.
 
+## Roadmapa produktu
+
+Najbliższy większy update obejmie angielski interfejs i angielskie komunikaty.
+W dalszej perspektywie rozważymy delikatny, nieinwazyjny model reklamowy albo
+dobrowolne wsparcie projektu. Reklamy nie są częścią obecnej wersji i nie będą
+oparte na treści wydatków, paragonów ani powiadomień.
+
 ## Krótki opis do karty portfolio
 
 Myszy to aplikacja Android do wspólnych wydatków dla pary. Skupiłem się na
 prostym przepływie rozliczeń oraz prywatności: dane są chronione przez RLS,
 paragony są prywatne, a powiadomienia nie ujawniają danych finansowych.
+## OCR paragonow — planowany kolejny update
+
+W kolejnej iteracji chcemy dodac OCR paragonow: odczyt sklepu, kwoty i prostych
+pozycji ze zdjecia, zawsze z ekranem podgladu i zatwierdzeniem przez uzytkownika.
+Obecna wersja pokazuje fikcyjny paragon DEV oraz reczne dodawanie zalacznika,
+ale celowo nie rozpoznaje jeszcze tresci automatycznie.
+
+## Roadmapa po wersji Android
+
+Po ustabilizowaniu polskiej wersji Android i zakończeniu testów planujemy:
+
+- dodać angielski interfejs oraz angielskie komunikaty;
+- przygotować wersję iOS na bazie sprawdzonego modelu wspólnej norki;
+- dopiero potem rozszerzać funkcję odczytu płatności, która obecnie pozostaje oznaczona jako kolejny update.

@@ -10,7 +10,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +26,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,6 +37,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeoutOrNull
+
+private enum class MembershipState { CHECKING, CONNECTED, NEEDS_SETUP, FAILED }
 
 @Composable
 fun CloudRazemApp(
@@ -58,14 +63,16 @@ fun CloudRazemApp(
     var signedIn by remember { mutableStateOf(false) }
     var showWelcome by remember { mutableStateOf(false) }
     var member by remember { mutableStateOf<MemberRow?>(null) }
-    var membershipLoadFailed by remember { mutableStateOf(false) }
+    var membershipState by remember { mutableStateOf(MembershipState.CHECKING) }
     var items by remember { mutableStateOf<List<Expense>>(emptyList()) }
     var balanceCorrection by remember { mutableDoubleStateOf(0.0) }
     var pending by remember { mutableStateOf(localStore.pending()) }
     var adding by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Expense?>(null) }
     var celebration by remember { mutableStateOf<String?>(null) }
-    var safeMode by remember { mutableStateOf(localStore.safeMode()) }
+    // Notification reading is intentionally postponed to a later update.
+    // Keep every account in the safe/manual mode until that feature is ready.
+    var safeMode by remember { mutableStateOf(true) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var authNotice by remember { mutableStateOf<String?>(null) }
@@ -75,12 +82,16 @@ fun CloudRazemApp(
     var importDraft by remember { mutableStateOf<Expense?>(null) }
     var settling by remember { mutableStateOf(false) }
     var showingSettlementHistory by remember { mutableStateOf(false) }
+    var showingDemoReceipt by remember { mutableStateOf(false) }
     var seenExpenseIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var syncInitialized by remember { mutableStateOf(false) }
     var lastActivity by remember { mutableStateOf<Pair<String, Expense>?>(null) }
     var householdMembers by remember { mutableStateOf<List<MemberRow>>(emptyList()) }
     var pawelUserId by remember { mutableStateOf<String?>(null) }
+    var accountEmail by remember { mutableStateOf("") }
     var notificationStart by remember { mutableStateOf(java.time.Instant.now()) }
+
+    LaunchedEffect(Unit) { localStore.setSafeMode(true) }
 
     fun clearLocalSession() {
         localStore.clearSensitiveSessionState()
@@ -91,6 +102,7 @@ fun CloudRazemApp(
         seenExpenseIds = emptySet()
         syncInitialized = false
         notificationStart = java.time.Instant.now()
+        membershipState = MembershipState.CHECKING
     }
 
     suspend fun logout() {
@@ -104,20 +116,23 @@ fun CloudRazemApp(
     }
 
     suspend fun refresh(showLoading: Boolean = true) {
-        if (showLoading) loading = true
+        // Przy odświeżaniu istniejącego Domu zostawiamy ekran Home na miejscu.
+        if (showLoading && member == null) loading = true
         val loadedMember = try {
             repo.membership()
         } catch (failure: Throwable) {
             // A temporary API timeout must never look like an unpaired account.
             android.util.Log.e("MyszySync", "Nie udało się pobrać członkostwa Domu", failure)
-            membershipLoadFailed = true
+            if (member == null) membershipState = MembershipState.FAILED else membershipState = MembershipState.CONNECTED
             error = "Nie udało się teraz połączyć z Domem. Spróbujemy ponownie automatycznie."
             if (showLoading) loading = false
             return
         }
-        membershipLoadFailed = false
+        membershipState = if (loadedMember == null) MembershipState.NEEDS_SETUP else MembershipState.CONNECTED
+        if (loadedMember == null) error = null
         member = loadedMember
         member?.let { m ->
+            accountEmail = repo.currentUser()?.email.orEmpty()
             localStore.setNotificationIdentity(m.nickname)
             runCatching { repo.registerFcmToken(m.householdId) }
                 .onFailure { android.util.Log.e("MyszyFcm", "Nie udało się zarejestrować tokenu FCM", it) }
@@ -128,7 +143,12 @@ fun CloudRazemApp(
             val cloud = repo.expenses(m.householdId)
             balanceCorrection = repo.household(m.householdId)?.balanceCorrection ?: 0.0
             val activityRows = runCatching { repo.activities(m.householdId) }.getOrDefault(emptyList())
-            val mapped = cloud.map { Expense(it.id, it.merchant, it.amount, it.pawelPercent, nicknames[it.payerId] ?: "Nieznana osoba", it.receiptPath, it.occurredAt, it.category, it.createdAt, it.comment, it.pawelShare, it.aniaShare, it.payerId) }
+            val mapped = cloud.map {
+                // Keep one seeded DEV expense visually useful for the portfolio
+                // without putting a fake storage object into Supabase.
+                val receipt = it.receiptPath ?: if (BuildConfig.IS_DEV && it.merchant == "Zakupy tygodniowe") DEMO_RECEIPT_PATH else null
+                Expense(it.id, it.merchant, it.amount, it.pawelPercent, nicknames[it.payerId] ?: "Nieznana osoba", receipt, it.occurredAt, it.category, it.createdAt, it.comment, it.pawelShare, it.aniaShare, it.payerId)
+            }
                 .sortedByDescending { it.occurredAt }
             val myId = repo.currentUser()?.id
             if (syncInitialized && localStore.expenseNotificationsReady()) {
@@ -290,10 +310,17 @@ fun CloudRazemApp(
                 }
             )
             showWelcome -> WelcomeMyszy { showWelcome = false }
-            loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            showingDemoReceipt -> DemoReceiptScreen(close = { showingDemoReceipt = false })
+            loading -> MyszyLoadingScreen()
             inviteCode != null -> InviteCodeScreen(inviteCode!!) { scope.launch { inviteCode = null; refresh() } }
-            membershipLoadFailed -> PairingUnavailable(error, retry = { scope.launch { refresh() } }, onLogout = { scope.launch { logout() } })
-            member == null -> HouseholdSetup(
+            membershipState == MembershipState.FAILED -> PairingUnavailable(error, retry = { scope.launch { refresh() } }, onLogout = { scope.launch { logout() } })
+            membershipState == MembershipState.CHECKING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CircularProgressIndicator()
+                    Text("Łączę z Domem Myszy", color = MouseMuted)
+                }
+            }
+            membershipState == MembershipState.NEEDS_SETUP && member == null -> HouseholdSetup(
                 invite = inviteCode,
                 error = error,
                 onCreate = { nickname ->
@@ -334,17 +361,32 @@ fun CloudRazemApp(
                 yes = { scope.launch { val tx=importQueue.first(); loading=true; val expense=Expense(java.util.UUID.randomUUID().toString(),tx.description,tx.amount,60,member!!.nickname,null, category = suggestedCategory(tx.description), payerId = member!!.userId); runCatching { repo.addExpense(member!!.householdId,expense); bankStore.markAdded(tx.id); ExpenseNotifications.show(context,expense); importQueue=importQueue.drop(1); bankStore.save(importQueue); if(importQueue.isEmpty()) { reviewingImport=false; bankStore.clear() }; refresh() }.onFailure { error=it.message; loading=false } } },
                 no = { importQueue=importQueue.drop(1); bankStore.save(importQueue); if(importQueue.isEmpty()) { reviewingImport=false; bankStore.clear() } },
                 modify = { val tx=importQueue.first(); importDraft=Expense(java.util.UUID.randomUUID().toString(),tx.description,tx.amount,60,member!!.nickname,null, category = suggestedCategory(tx.description), payerId = member!!.userId); reviewingImport=false },
-                stop = { reviewingImport=false })
+                stop = { reviewingImport=false },
+                discard = { importQueue=emptyList(); reviewingImport=false; bankStore.clear() })
             settling -> SettlementScreen(member!!.nickname, member!!.userId == pawelUserId, { settling=false }) { expense -> scope.launch { loading=true; runCatching { repo.addExpense(member!!.householdId,expense.copy(payerId = member!!.userId)); settling=false; refresh() }.onFailure { error=it.message; loading=false } } }
-            showingSettlementHistory -> SettlementHistoryScreen(items.filter(::isSettlement), { showingSettlementHistory = false }, { editing = it; showingSettlementHistory = false })
+            showingSettlementHistory -> SettlementHistoryScreen(
+                settlements = items.filter(::isSettlement),
+                currentName = member!!.nickname,
+                partnerName = householdMembers.firstOrNull { it.userId != member!!.userId }?.nickname ?: "druga mysz",
+                close = { showingSettlementHistory = false },
+                edit = { editing = it; showingSettlementHistory = false }
+            )
             adding || editing != null -> Add(
                 initial = editing,
                 members = householdMembers,
                 currentUserId = member!!.userId,
                 pawelUserId = pawelUserId,
                 cancel = { adding = false; editing = null },
+                previewReceipt = { showingDemoReceipt = true },
+                importPdf = { importLauncher.launch(arrayOf("application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel")) },
+                resumeImport = { reviewingImport = true },
+                hasImport = importQueue.isNotEmpty(),
                 viewReceipt = { expense ->
                     scope.launch {
+                        if (expense.receipt == DEMO_RECEIPT_PATH) {
+                            showingDemoReceipt = true
+                            return@launch
+                        }
                         runCatching { repo.receiptUrl(expense.receipt!!) }
                             .onSuccess { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }
                     }
@@ -386,28 +428,105 @@ fun CloudRazemApp(
                         }.onFailure { error = it.message; loading = false }
                     }
                 }
-            )            else -> Home(user=member!!.nickname,isPawelUser=member!!.userId == pawelUserId,pawelUserId=pawelUserId,xs=items,balanceCorrection=balanceCorrection,pending=pending,safeMode=safeMode,
+            )            else -> Home(user=member!!.nickname,isPawelUser=member!!.userId == pawelUserId,pawelUserId=pawelUserId,xs=items,members=householdMembers,currentUserId=member!!.userId,accountEmail=accountEmail,balanceCorrection=balanceCorrection,pending=pending,safeMode=safeMode,
                 setSafeMode={ safeMode=it; localStore.setSafeMode(it) }, add={ adding=true }, edit={ editing=it },
-                viewReceipt={ expense -> scope.launch { runCatching { repo.receiptUrl(expense.receipt!!) }.onSuccess { context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(it))) }.onFailure { error=it.message } } },
+                viewReceipt={ expense -> scope.launch {
+                    if (expense.receipt == DEMO_RECEIPT_PATH) {
+                        showingDemoReceipt = true
+                    } else {
+                        runCatching { repo.receiptUrl(expense.receipt!!) }.onSuccess { context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(it))) }.onFailure { error=it.message }
+                    }
+                } },
                 removeReceipt={ expense -> scope.launch { loading=true; runCatching { repo.removeReceipt(member!!.householdId,expense.id,expense.receipt!!); refresh() }.onFailure { error=it.message; loading=false } } },
                 importBank={ importLauncher.launch(arrayOf("application/pdf","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","application/vnd.ms-excel")) }, resumeImport={ reviewingImport=true }, hasImport=importQueue.isNotEmpty(), canReadNotifications=member!!.userId == pawelUserId, settle={ settling=true }, settlementHistory={ showingSettlementHistory = true },
                 lastActivity=lastActivity,
                 accept={ payment -> scope.launch { loading=true; val expense=Expense(java.util.UUID.randomUUID().toString(),payment.merchant,payment.amount,60,member!!.nickname,null, payerId = member!!.userId); runCatching { repo.addExpense(member!!.householdId,expense,"alior_notification"); localStore.clear(); pending=null; refresh(); celebration=member!!.nickname; ExpenseNotifications.show(context,expense) }.onFailure { error=it.message; loading=false } } },
-                reject={ localStore.clear(); pending=null }, logout={ scope.launch { logout() } })
+                reject={ localStore.clear(); pending=null }, logout={ scope.launch { logout() } }, saveProfile={ avatarId, profileColor -> scope.launch { runCatching { repo.updateMemberProfile(member!!.householdId, member!!.userId, avatarId, profileColor) }.onFailure { android.util.Log.e("MyszyProfile", "Nie udało się zsynchronizować profilu", it) } } })
         }
         celebration?.let { Celebration(it) { celebration=null } }
     }
 }
 
 @Composable
+private fun MyszyLoadingScreen() {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier.padding(28.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Image(
+                    painterResource(mouseMotifResources[0]),
+                    "Mysz przegląda dane",
+                    Modifier.size(72.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                Image(
+                    painterResource(mouseMotifResources[1]),
+                    "Druga mysz przegląda dane",
+                    Modifier.size(72.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            Text("Myszy zaglądają do norki…", color = MouseTerracotta, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Sprawdzamy dane i przygotowujemy następny krok.", color = MouseMuted, textAlign = TextAlign.Center)
+            CircularProgressIndicator(color = MouseTerracotta, trackColor = MouseTerracottaSoft)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DemoReceiptScreen(close: () -> Unit) {
+    Scaffold(
+        containerColor = MouseCream,
+        topBar = {
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MouseCream, titleContentColor = MouseInk),
+                title = { Text("Paragon w norkowej gablotce", fontWeight = FontWeight.Bold) },
+                navigationIcon = { TextButton(onClick = close) { Text("Wróć", color = MouseTerracotta) } }
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Surface(color = MouseTerracottaSoft, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Fikcyjny paragon DEV", color = MouseTerracotta, fontWeight = FontWeight.Bold)
+                    Text("Do screenów i testów przepływu — nie jest dowodem zakupu.", color = MouseMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+                }
+            }
+            Image(
+                painter = painterResource(R.drawable.receipt_demo),
+                contentDescription = "Fikcyjny paragon Myszy Market",
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)),
+                contentScale = ContentScale.FillWidth
+            )
+            Text("Paragon jest przypięty do wydatku tak samo jak zdjęcie z telefonu. W wersji produkcyjnej można go otworzyć, usunąć albo zastąpić własnym zdjęciem.", color = MouseMuted, fontSize = 12.sp, textAlign = TextAlign.Center)
+            Button(onClick = close, modifier = Modifier.fillMaxWidth().height(52.dp), colors = ButtonDefaults.buttonColors(containerColor = MouseTerracotta), shape = RoundedCornerShape(16.dp)) {
+                Text("Wróć do wydatku", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
 private fun WelcomeMyszy(done: () -> Unit) {
     val messages = listOf(
-        "Mysz i Misio liczą 60/40 szybciej niż kalkulator zdąży ziewnąć.",
-        "Tu widać, kto ma do oddania — bez detektywa i bez dramatu.",
-        "Paragon nie mieszka już w kieszeni. Robimy mu zdjęcie i ma domek.",
-        "PDF, Excel i bank? Myszy lubią porządek bardziej niż tabelki lubią kolumny.",
-        "Wspólny bilans dla Myszy i Misia. Settle Up może spokojnie chrupać ser." ,
-        "Najnowsze wydatki s\u0105 na g\u00f3rze, bo Myszy nie lubi\u0105 archeologii."
+        "🐭 Dwie myszy, jeden budżet — bez liczenia na odwrocie paragonu.",
+        "⚖️ Mysze pokazują, kto jest do przodu i ile spokojnie wyrównać.",
+        "🧾 Paragon dostaje swój domek, więc nie znika w kieszeni ani galerii.",
+        "📄 Import PDF z banku? Myszy proponują, Ty zatwierdzasz każdy okruszek.",
+        "🏠 Wspólna norka jest tylko dla dwóch sparowanych kont. Mniej dramatu, więcej spokoju.",
     )
     var index by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -419,13 +538,13 @@ private fun WelcomeMyszy(done: () -> Unit) {
         done()
     }
     Box(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFFFF2F7), Color(0xFFEDE5F7)))),
+        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(28.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Image(painterResource(R.drawable.mysza_ania), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
-                Image(painterResource(R.drawable.misio_pawel), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[2]), "Myszo", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[3]), "Mysza", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
             }
             Spacer(Modifier.height(24.dp))
             Text("Zanim zaczniemy...", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = BearBlue)
@@ -453,6 +572,8 @@ private fun CloudLogin(
     signUp: (String, String, String) -> Unit,
     resetPassword: (String) -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val authorLinkedInUrl = "https://www.linkedin.com/search/results/people/?keywords=Pawe%C5%82%20Karolak"
     var mode by remember { mutableStateOf(AuthMode.SIGN_IN) }
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -468,23 +589,21 @@ private fun CloudLogin(
     }
 
     Column(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF), Color(0xFFF8F2FF))))
+        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface)))
             .verticalScroll(scroll).imePadding().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 30.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Aplikacja do rozliczania wydatk\u00f3w Mysz\u00f3w", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+        Text("Myszy · wspólna norka", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MouseInk)
+        Text("Spokojnie ogarniamy wydatki we dwoje.", color = MouseMuted, fontSize = 14.sp)
         Spacer(Modifier.height(18.dp))
         Surface(color = AniaPurpleSoft, shape = RoundedCornerShape(28.dp), tonalElevation = 3.dp) {
             Row(Modifier.padding(horizontal = 22.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.mysza_ania), null, Modifier.size(60.dp).clip(CircleShape), contentScale = ContentScale.Fit)
-                Image(painterResource(R.drawable.misio_pawel), null, Modifier.size(60.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[0]), "Myszo", Modifier.size(60.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[1]), "Mysza", Modifier.size(60.dp).clip(CircleShape), contentScale = ContentScale.Fit)
             }
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { AssistChip({}, { Text("\uD83C\uDF1F wsp\u00f3lny bilans") }); AssistChip({}, { Text("\uD83E\uDDFE paragony") }) }
-        Spacer(Modifier.height(4.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { AssistChip({}, { Text("\uD83C\uDFE6 import banku") }); AssistChip({}, { Text("\uD83E\uDD1D sp\u0142aty") }); AssistChip({}, { Text("\uD83D\uDD14 Alior") }) }
-        TextButton({ showPrivacy = true }, colors = ButtonDefaults.textButtonColors(contentColor = AniaPurple)) { Text("Spokojnie Myszo \uD83D\uDC2D") }
+        OutlinedButton({ showPrivacy = true }, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MouseTerracotta.copy(alpha = .45f)), colors = ButtonDefaults.outlinedButtonColors(contentColor = MouseTerracotta)) { Text("\uD83D\uDD12 Co Myszy widzą?") }
         Spacer(Modifier.height(8.dp))
         Surface(Modifier.fillMaxWidth(), color = Color.White.copy(alpha = .92f), shape = RoundedCornerShape(24.dp), tonalElevation = 3.dp) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -549,9 +668,13 @@ private fun CloudLogin(
         Spacer(Modifier.height(18.dp))
         Surface(Modifier.fillMaxWidth(), color = Color.White.copy(alpha = .96f), shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp, shadowElevation = 4.dp) {
             Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.misio_oto_ja), null, Modifier.size(76.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                Image(painterResource(R.drawable.mysza_clean_01), null, Modifier.size(76.dp).clip(CircleShape), contentScale = ContentScale.Crop)
                 Spacer(Modifier.width(10.dp))
-                Column { Text("\u2601 Aplikacja zrobiona przez Myszo", color = BearBlue, fontWeight = FontWeight.Bold); Text("Oto ja!", color = MousePink, style = MaterialTheme.typography.labelLarge) }
+                Column(Modifier.weight(1f)) {
+                    Text("Aplikacja zrobiona przez: Paweł Karolak", color = MouseInk, fontWeight = FontWeight.Bold)
+                     Text("Oto ja, twórca Myszy", color = MouseTerracotta, style = MaterialTheme.typography.labelLarge)
+                    TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(authorLinkedInUrl))) }, contentPadding = PaddingValues(0.dp)) { Text("LinkedIn / profil autora", color = MouseSage, fontSize = 12.sp) }
+                }
             }
         }
     }
@@ -569,17 +692,22 @@ private fun PasswordRecoveryScreen(
     var repeatedPassword by remember { mutableStateOf("") }
     Column(
         Modifier.fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF))))
+            .background(Brush.verticalGradient(listOf(MouseCream, MousePeach)))
             .imePadding()
             .navigationBarsPadding()
             .padding(22.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.mysza_clean_01), "Mysz", Modifier.size(58.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+            Image(painterResource(R.drawable.mysza_clean_02), "Mysz", Modifier.size(58.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+        }
+        Spacer(Modifier.height(14.dp))
         Surface(Modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(24.dp), tonalElevation = 4.dp) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Ustaw nowe hasło", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text("Link z wiadomości został potwierdzony. Nowe hasło musi mieć co najmniej 8 znaków.", color = Color.Gray)
+                Text("Nowy klucz do norki", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MouseInk)
+                Text("Link został potwierdzony. Ustaw hasło, a wrócisz bezpiecznie do swojej wspólnej norki.", color = MouseMuted)
                 OutlinedTextField(password, { password = it }, label = { Text("Nowe hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
                 OutlinedTextField(repeatedPassword, { repeatedPassword = it }, label = { Text("Powtórz nowe hasło") }, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp))
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -588,7 +716,7 @@ private fun PasswordRecoveryScreen(
                     enabled = !loading && password.isNotBlank() && repeatedPassword.isNotBlank(),
                     modifier = Modifier.fillMaxWidth().height(54.dp),
                     shape = RoundedCornerShape(16.dp)
-                ) { Text(if (loading) "Zapisywanie..." else "Zapisz nowe hasło", fontWeight = FontWeight.Bold) }
+                ) { Text(if (loading) "Zapisujemy klucz..." else "Zapisz nowe hasło", fontWeight = FontWeight.Bold) }
                 TextButton(cancel, enabled = !loading, modifier = Modifier.fillMaxWidth()) { Text("Wróć do logowania") }
             }
         }
@@ -604,11 +732,11 @@ private fun LegacyPrivacyMyszy(close: () -> Unit) {
     )
     var page by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(2_400); page = (page + 1) % cards.size } }
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFFFF1F6), Color(0xFFEDE5F7)))), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))), contentAlignment = Alignment.Center) {
         Column(Modifier.padding(28.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Image(painterResource(R.drawable.mysza_ania), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
-                Image(painterResource(R.drawable.misio_pawel), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[2]), "Myszo", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(mouseMotifResources[3]), "Mysza", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
             }
             Spacer(Modifier.height(18.dp))
             Text("Spokojnie Myszo", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = AniaPurple)
@@ -627,30 +755,44 @@ private fun LegacyPrivacyMyszy(close: () -> Unit) {
 }
 @Composable
 private fun PrivacyMyszy(close: () -> Unit) {
-    val cards = listOf(
+    val _legacyCards = listOf(
         "📷 Aparat i pliki\nTylko gdy dodajesz paragon albo importujesz swój PDF/Excel.",
         "🔔 Powiadomienia płatności\nOpcjonalnie przetwarzamy tylko powiadomienia Alior Mobile, Gmail dotyczące Alior oraz Portfela Google. Dostęp możesz wyłączyć w ustawieniach Androida.",
         "☁ Wspólny Dom\nWydatki i paragony zapisują się w prywatnym Domu w Supabase, aby były widoczne dla dwóch sparowanych kont.",
         "🔒 Mniej danych\nPowiadomienia nie pokazują kwoty ani sklepu, a sygnał FCM nie zawiera szczegółów finansowych.",
         "🛡️ Bez stresu\nNie czytamy kontaktów, SMS-ów ani haseł bankowych. Po wylogowaniu usuwamy lokalną kolejkę importu i oczekujące płatności."
     )
+    val highlights = listOf(
+        "🐭 Dwie myszy, jeden budżet\nKażda osoba dodaje swoje wydatki, a obie widzą ten sam spokojny bilans.",
+        "⚖️ Koniec z liczeniem na odwrocie paragonu\nMysze pokazują, kto jest do przodu i ile trzeba wyrównać.",
+        "🧾 Paragony zostają przy wydatku\nZdjęcie pomaga pamiętać, na co poszły pieniądze — bez polowania po galerii.",
+        "📄 PDF z banku bez automatycznych niespodzianek\nMyszy proponują wydatki po kolei, a Ty zatwierdzasz każdy okruszek.",
+        "🏠 Wspólna norka dla dwóch kont\nNie dla całej klatki schodowej — tylko dla Waszego sparowanego Domu."
+    )
+    val privacyCards = listOf(
+        "📷 Aparat i pliki\nTylko gdy prosisz o paragon albo importujesz PDF/Excel. Myszy nie zaglądają same.",
+        "🔒 Mało danych, dużo spokoju\nNie czytamy kontaktów, SMS-ów ani haseł bankowych.",
+        "🛡️ Ty trzymasz łapkę na przycisku\nPowiadomienie nie staje się automatycznie wydatkiem, a dostęp możesz wyłączyć.",
+        "⭐ Odczyt płatności\nFunkcja jest chwilowo wyłączona i planowana do kolejnego update'u."
+    )
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFEAF2FF), Color(0xFFFFF1F6), Color(0xFFEDE5F7)))
+            Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))
         ),
         contentAlignment = Alignment.Center
     ) {
         Column(Modifier.padding(28.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Image(painterResource(R.drawable.mysza_ania), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
-                Image(painterResource(R.drawable.misio_pawel), null, Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(R.drawable.mysza_clean_01), "Mysz", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
+                Image(painterResource(R.drawable.mysza_clean_02), "Mysz", Modifier.size(70.dp).clip(CircleShape), contentScale = ContentScale.Fit)
             }
             Spacer(Modifier.height(18.dp))
-            Text("Prywatność w Myszy", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = AniaPurple)
+            Text("Prywatność w aplikacji „Mysze”", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = AniaPurple)
+            Text("Myszy mówią wprost, co widzą, a czego nie ruszają.", color = MouseMuted, textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = 14.sp)
             Spacer(Modifier.height(14.dp))
             Surface(color = Color.White, shape = RoundedCornerShape(28.dp), tonalElevation = 6.dp) {
                 Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    cards.forEach { card ->
+                    privacyCards.forEach { card ->
                         Text(card, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color(0xFF39324A))
                     }
                 }
@@ -687,7 +829,7 @@ private fun HouseholdSetup(
 
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF), Color(0xFFF8F2FF)))
+            Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))
         )
     ) {
         Column(
@@ -787,7 +929,7 @@ private fun HouseholdSetup(
 private fun InviteCodeScreen(code: String, continueToHome: () -> Unit) {
     Box(
         Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color(0xFFFFF4F7), Color(0xFFEAF2FF), Color(0xFFF8F2FF)))
+            Brush.verticalGradient(listOf(MouseCream, MousePeach, MouseSurface))
         ),
         contentAlignment = Alignment.Center
     ) {
