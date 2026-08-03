@@ -1091,15 +1091,16 @@ fun SettlementHistoryScreen(
                 item { Text(formatExpenseMonth(month), color = MouseInk, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 4.dp)) }
                 items(entries, key = { it.id }, contentType = { "settlement" }) { payment ->
                     val byPawel = isPawel(payment.payer)
-                    Surface(Modifier.fillMaxWidth().clickable { edit(payment) }, color = MouseSurface, shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, MouseLine)) {
+                    Surface(Modifier.fillMaxWidth().clickable { edit(payment) }, color = MouseLavenderSoft.copy(alpha = .78f), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.5.dp, MouseLavender.copy(alpha = .55f))) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Surface(color = MouseLavenderSoft, shape = CircleShape, modifier = Modifier.size(48.dp)) { Image(painterResource(if (byPawel) R.drawable.misio_pawel else R.drawable.mysza_ania), null, Modifier.padding(3.dp).clip(CircleShape), contentScale = ContentScale.Crop) }
                             Spacer(Modifier.width(11.dp))
                             Column(Modifier.weight(1f)) {
                                 val payerName = payment.payer.ifBlank { currentName }
                                 val receiverName = if (payerName.equals(currentName, ignoreCase = true)) partnerName else currentName
-                                Text("$payerName spłaca $receiverName", color = MouseInk, fontWeight = FontWeight.Bold)
-                                Text(formatExpenseDate(payment.occurredAt), color = MouseMuted, fontSize = 12.sp)
+                                Text("$payerName spłaca $receiverName", color = MouseInk, fontWeight = FontWeight.Bold, maxLines = 1)
+                                Surface(color = MouseLavender, shape = RoundedCornerShape(7.dp)) { Text("WYRÓWNANIE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)) }
+                                Text(formatExpenseDate(payment.occurredAt), color = MouseMuted, fontSize = 12.sp, maxLines = 1)
                                 if (payment.comment.isNotBlank()) Text(payment.comment, color = MouseMuted, fontSize = 12.sp, maxLines = 1)
                             }
                             Column(horizontalAlignment = Alignment.End) { Text(money(payment.amount), color = MouseLavender, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold); Text("Edytuj", color = MouseMuted, fontSize = 11.sp) }
