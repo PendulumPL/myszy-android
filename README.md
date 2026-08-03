@@ -107,6 +107,8 @@ rozpoznaje automatycznie jego tresci.
 - [PORTFOLIO_CASE_STUDY.md](PORTFOLIO_CASE_STUDY.md) — szkic opisu do portfolio.
 - [PORTFOLIO_SCREENSHOT_PLAN.md](PORTFOLIO_SCREENSHOT_PLAN.md) — plan screenów DEV.
 - [supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md](supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md) — gotowe szablony maili Auth w stylu Myszy.
+- [TESTER_QUICKSTART.md](TESTER_QUICKSTART.md) — krótka instrukcja dla testerów DEV.
+- [LINKEDIN_MYSZY_DRAFT.md](LINKEDIN_MYSZY_DRAFT.md) — gotowe opisy do LinkedIna.
 
 Kod DEV jest publiczny na [GitHubie](https://github.com/PendulumPL/myszy-android),
 a pełne case study znajduje się na [stronie portfolio](https://pendulumpl.github.io/seansownik-portfolio/myszy.html).
