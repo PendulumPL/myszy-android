@@ -64,12 +64,12 @@
 ## Przed publicznym GitHubem i portfolio
 
 - [x] wykonac skan plikow przeznaczonych do pierwszego commita pod katem sekretow i danych prywatnych;
-- [ ] opublikowac wylacznie kod i konfiguracje DEV/demo;
+- [x] opublikowac wylacznie kod i konfiguracje DEV/demo;
 - [x] zrobic screeny tylko na fikcyjnych danych (12 screenow w `portfolio/screenshots-dev/`);
 - [ ] odswiezyc screeny norki, historii i wyrownan po zmianie avatarow osob oraz lawendowym stylu wyrownan;
 - [x] dopisac README, opis architektury i case study;
 - [x] przygotowac manifest plikow do bezpiecznego publicznego repozytorium;
-- [ ] dodac projekt do istniejacej strony portfolio na GitHubie.
+- [x] dodac projekt do istniejacej strony portfolio na GitHubie.
 
 ### Decyzja zakresu — kolejny update
 
