@@ -31,7 +31,8 @@
 - [x] przygotowac i przetestowac fikcyjny paragon;
 - [x] sprawdzic w obie strony, ze powiadomienie DEV nie zawiera kwoty ani sklepu;
 - [ ] wpisac dane kontaktowe i opublikowac polityke prywatnosci pod stalym adresem;
-- [ ] skonfigurowac wlasny SMTP lub hook wysylki, aby nadac mailom Supabase styl Myszy;
+- [ ] wkleic szablony potwierdzenia i resetu z `supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md` do Supabase DEV;
+- [ ] opcjonalnie skonfigurowac wlasny SMTP lub hook wysylki, aby nadawca maila byl w pelni markowy;
 - [ ] utworzyc konto/konfiguracje Google Play Console, jesli jeszcze nie istnieje;
 - [ ] zachowac zaszyfrowana kopie plikow klucza uploadu poza katalogiem projektu;
 - [ ] podniesc wersje aplikacji dopiero przy faktycznym buildzie testerskim.
@@ -66,7 +67,7 @@
 - [x] wykonac skan plikow przeznaczonych do pierwszego commita pod katem sekretow i danych prywatnych;
 - [x] opublikowac wylacznie kod i konfiguracje DEV/demo;
 - [x] zrobic screeny tylko na fikcyjnych danych (12 screenow w `portfolio/screenshots-dev/`);
-- [ ] odswiezyc screeny norki, historii i wyrownan po zmianie avatarow osob oraz lawendowym stylu wyrownan;
+- [x] odswiezyc screeny norki, historii i wyrownan po zmianie avatarow osob oraz lawendowym stylu wyrownan;
 - [x] dopisac README, opis architektury i case study;
 - [x] przygotowac manifest plikow do bezpiecznego publicznego repozytorium;
 - [x] dodac projekt do istniejacej strony portfolio na GitHubie.

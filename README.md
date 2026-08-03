@@ -106,7 +106,9 @@ rozpoznaje automatycznie jego tresci.
 - [PLAY_STORE_DRAFT.md](PLAY_STORE_DRAFT.md) — robocze materiały do Google Play.
 - [PORTFOLIO_CASE_STUDY.md](PORTFOLIO_CASE_STUDY.md) — szkic opisu do portfolio.
 - [PORTFOLIO_SCREENSHOT_PLAN.md](PORTFOLIO_SCREENSHOT_PLAN.md) — plan screenów DEV.
+- [supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md](supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md) — gotowe szablony maili Auth w stylu Myszy.
 
-Projekt nie jest jeszcze publicznie wydany. Przed publikacją potrzebne są testy
-na fikcyjnych danych, stały adres polityki prywatności, końcowy skan repozytorium
-i materiały portfolio bez danych prywatnych.
+Kod DEV jest publiczny na [GitHubie](https://github.com/PendulumPL/myszy-android),
+a pełne case study znajduje się na [stronie portfolio](https://pendulumpl.github.io/seansownik-portfolio/myszy.html).
+Wydanie testerskie w Google Play pozostaje osobnym krokiem po zamknięciu testu
+resetu hasła i konfiguracji maili.

@@ -26,5 +26,5 @@
 4. Upewnić się, że opis jasno oznacza funkcję odczytu powiadomień jako roadmapę kolejnego update'u.
 5. Dopiero wtedy wykonać pierwszy commit i push do GitHuba.
 
-Publikacja nie została jeszcze wykonana.
-
+Repozytorium publiczne jest opublikowane pod adresem:
+https://github.com/PendulumPL/myszy-android
