@@ -13,6 +13,11 @@ Prywatna aplikacja `Myszy.apk` jest tylko dla Pawła i Ani.
 4. Otwórz mail potwierdzający od Supabase i wróć do aplikacji.
 5. Utwórz lub dołącz do testowego Domu otrzymanym kodem.
 
+Reset hasła jest obsługiwany i sprawdzony. Jeśli tester wybierze „Nie pamiętasz
+hasła?”, otrzyma link na prawdziwy adres e-mail; po kliknięciu ustawi nowe hasło
+i wróci do aplikacji. Na darmowym planie Supabase wiadomość może mieć jeszcze
+domyślny, angielski wygląd.
+
 ## Co sprawdzić
 
 - logowanie i wylogowanie;

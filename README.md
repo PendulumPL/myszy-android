@@ -112,5 +112,7 @@ rozpoznaje automatycznie jego tresci.
 
 Kod DEV jest publiczny na [GitHubie](https://github.com/PendulumPL/myszy-android),
 a pełne case study znajduje się na [stronie portfolio](https://pendulumpl.github.io/seansownik-portfolio/myszy.html).
-Wydanie testerskie w Google Play pozostaje osobnym krokiem po zamknięciu testu
-resetu hasła i konfiguracji maili.
+Reset hasła został potwierdzony na prawdziwym koncie DEV i na prywatnym koncie
+pary: mail, deeplink, ustawienie nowego hasła i powrót do istniejącego Domu.
+Wersja APK jest gotowa do kontrolowanych testów DEV; Google Play oraz własne
+myszowe szablony maili pozostają osobnymi krokami.
