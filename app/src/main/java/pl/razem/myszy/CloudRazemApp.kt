@@ -192,8 +192,12 @@ fun CloudRazemApp(
             consumedExternalAuthError()
         }
     }
-    LaunchedEffect(signedIn, authReady) { if (signedIn && authReady) runCatching { refresh() }.onFailure { error = it.message; loading = false } }
-    LaunchedEffect(signedIn, authReady) {
+    LaunchedEffect(signedIn, authReady, passwordRecovery) {
+        if (passwordRecovery) return@LaunchedEffect
+        if (signedIn && authReady) runCatching { refresh() }.onFailure { error = it.message; loading = false }
+    }
+    LaunchedEffect(signedIn, authReady, passwordRecovery) {
+        if (passwordRecovery) return@LaunchedEffect
         if (!signedIn || !authReady) return@LaunchedEffect
         while (isActive) {
             delay(8_000)
@@ -297,7 +301,8 @@ fun CloudRazemApp(
                                 consumedPasswordRecovery()
                             }
                             .onFailure {
-                                error = "Nie udało się zmienić hasła. Poproś o nowy link."
+                                android.util.Log.e("MyszyAuth", "Nie udało się zmienić hasła", it)
+                                error = passwordUpdateErrorMessage(it)
                                 loading = false
                             }
                     }

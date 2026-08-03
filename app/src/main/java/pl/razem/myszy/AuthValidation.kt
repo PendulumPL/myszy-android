@@ -16,6 +16,17 @@ internal fun validateNewPassword(password: String, repeatedPassword: String): St
     else -> null
 }
 
+internal fun passwordUpdateErrorMessage(error: Throwable): String {
+    val message = error.message.orEmpty().lowercase()
+    return when {
+        message.contains("session") || message.contains("jwt") || message.contains("token") ->
+            "Sesja odzyskiwania wygasła. Poproś o nowy link i otwórz go od razu na tym urządzeniu."
+        message.contains("same") || message.contains("different") ->
+            "Nowe hasło musi różnić się od poprzedniego."
+        else -> "Nie udało się zmienić hasła. Spróbuj ponownie z nowym linkiem."
+    }
+}
+
 internal fun passwordResetErrorMessage(error: Throwable): String =
     if (error.message?.contains("over_email_send_rate_limit") == true) {
         "Wysłaliśmy już kilka wiadomości. Odczekaj chwilę i spróbuj ponownie."
