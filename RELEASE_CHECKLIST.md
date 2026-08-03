@@ -28,6 +28,7 @@
 - [x] dodac `myszy-dev://auth-callback` do dozwolonych przekierowan Supabase DEV;
 - [x] przetestowac zalozenie konta, potwierdzenie e-maila i zmiane hasla w DEV;
 - [x] wykonac pelny reset hasla na prawdziwym adresie DEV: mail, deeplink, zapis i ponowne logowanie;
+- [x] wykonac pelny reset hasla na prawdziwym koncie prywatnym: mail, deeplink, zapis i powrot do istniejacego Domu;
 - [x] przygotowac dwa fikcyjne konta i fikcyjny wydatek dla DEV;
 - [x] przygotowac i przetestowac fikcyjny paragon;
 - [x] sprawdzic w obie strony, ze powiadomienie DEV nie zawiera kwoty ani sklepu;
