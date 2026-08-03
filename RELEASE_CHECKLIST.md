@@ -31,8 +31,8 @@
 - [x] przygotowac i przetestowac fikcyjny paragon;
 - [x] sprawdzic w obie strony, ze powiadomienie DEV nie zawiera kwoty ani sklepu;
 - [ ] wpisac dane kontaktowe i opublikowac polityke prywatnosci pod stalym adresem;
+- [ ] skonfigurowac SMTP w Supabase DEV (wymagane, aby edytowac temat i tresc maili);
 - [ ] wkleic szablony potwierdzenia i resetu z `supabase/AUTH_EMAIL_TEMPLATES_MYSZY.md` do Supabase DEV;
-- [ ] opcjonalnie skonfigurowac wlasny SMTP lub hook wysylki, aby nadawca maila byl w pelni markowy;
 - [ ] utworzyc konto/konfiguracje Google Play Console, jesli jeszcze nie istnieje;
 - [ ] zachowac zaszyfrowana kopie plikow klucza uploadu poza katalogiem projektu;
 - [ ] podniesc wersje aplikacji dopiero przy faktycznym buildzie testerskim.

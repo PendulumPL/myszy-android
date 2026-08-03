@@ -1,7 +1,8 @@
 # Myszy — szablony maili Supabase Auth
 
-Ten plik zawiera bezpieczne, gotowe treści do wklejenia w Supabase:
-`Authentication → Email Templates`.
+Ten plik zawiera bezpieczne, gotowe treści do wklejenia w Supabase po
+skonfigurowaniu SMTP w `Authentication → Emails → SMTP Settings`.
+Supabase ukrywa edycję tematów i treści, dopóki własny SMTP nie jest aktywny.
 
 Nie wpisujemy tutaj haseł, tokenów ani prawdziwych adresów prywatnej pary.
 Linki pozostają generowane przez Supabase przez zmienną `{{ .ConfirmationURL }}`.
@@ -46,8 +47,9 @@ Linki pozostają generowane przez Supabase przez zmienną `{{ .ConfirmationURL }
 
 ## Ważne przed użyciem
 
-1. Najpierw wklejamy szablony w projekcie **DEV**, nie w prywatnym Supabase.
-2. Wysyłamy najwyżej jeden testowy link na konto, aby nie uruchomić limitu
+1. Najpierw konfigurujemy SMTP w projekcie **DEV**, nie w prywatnym Supabase.
+2. Dopiero potem wklejamy szablony w `Email Templates`.
+3. Wysyłamy najwyżej jeden testowy link na konto, aby nie uruchomić limitu
    `over_email_send_rate_limit`.
-3. Własny adres nadawcy i pełny branding wymagają później własnego SMTP.
-4. Po wklejeniu wykonujemy jeden test rejestracji i jeden test resetu hasła.
+4. Własny adres nadawcy i pełny branding wymagają danych SMTP od dostawcy.
+5. Po wklejeniu wykonujemy jeden test rejestracji i jeden test resetu hasła.
