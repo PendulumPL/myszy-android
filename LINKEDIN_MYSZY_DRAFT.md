@@ -18,6 +18,13 @@ Linki:
 
 ## Propozycja pierwszego wpisu
 
+## Kiedy publikować
+
+To dobry moment na spokojną aktualizację profilu i pierwszy wpis projektowy:
+GitHub, portfolio, prywatna para oraz test resetu hasła są już potwierdzone.
+Nie opisujemy jeszcze Myszy jako aplikacji publicznie wydanej — wersja DEV jest
+przygotowana do kontrolowanych testów, a Google Play pozostaje następnym etapem.
+
 Przedstawiam Myszy — aplikację Android do spokojnego rozliczania wspólnych
 wydatków przez dwie osoby.
 
@@ -36,7 +43,7 @@ https://github.com/PendulumPL/myszy-android
 
 ## Kolejny wpis po testach
 
-Wersja DEV Myszy trafiła do pierwszych testerów. Najważniejsze obserwacje
+Wersja DEV Myszy jest przygotowana do przekazania pierwszym testerom. Najważniejsze obserwacje
 dotyczą synchronizacji dwóch telefonów, edycji wydatków, paragonów,
 wyrównań i czytelności interfejsu. Następny etap to język angielski, OCR
 paragonów i ostrożne badanie modelu finansowania bez reklam śledzących wydatki.
